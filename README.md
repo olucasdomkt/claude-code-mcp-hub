@@ -8,7 +8,9 @@ O hub sobe cada servidor uma vez, como serviço do macOS (launchd), atrás de um
 
 | | antes | com o hub |
 |---|---|---|
-| 9 servidores MCP | 12 a 14 GB (23/10/2026, duas medições, com 16 e 27 sessões abertas) | ~1 GB (03/11/2026, 13 sessões) |
+| 9 servidores MCP | ~14 GB (23/10/2026, 16 sessões abertas) | ~1 GB (03/11/2026) |
+
+Com o hub, a memória não cresce com o número de sessões, porque cada servidor é um processo só.
 
 Medido com `top`, contando a memória comprimida. Antes, por servidor, com 16 sessões:
 
@@ -27,8 +29,9 @@ Em 11 dias ligado, o vigia não precisou reiniciar nenhum servidor. De quebra, a
 ## Como funciona
 
 - Um `mcp-proxy` por servidor, cada um numa porta fixa em `127.0.0.1`.
-- Os segredos (token do Supabase, do Asana etc.) são lidos do cofre na subida e não ficam gravados em arquivo. O cofre é o comando [`secret`](https://github.com/olucasdomkt/ferramentas-claude-code), que guarda no Keychain do macOS. Serve qualquer comando que entenda `get NOME`, `has NOME` e `set NOME VALOR` (aponte com `MCP_HUB_SECRET`).
-- Toda chamada precisa do token do hub (`Authorization: Bearer`, guardado no cofre como `MCP_HUB_TOKEN`). Assim, outro programa da máquina não usa o seu Gmail pelo hub. Sem o token a resposta é 401. Com `Origin` de um site externo, 403. Com um `Host` que não seja `127.0.0.1` ou `localhost`, 400, o que impede que um site use DNS rebinding para chegar ao servidor pelo navegador.
+- Os segredos (token do Supabase, do Asana etc.) são lidos do cofre na subida e não ficam gravados em arquivo. O cofre que eu uso é o [`secret`](https://github.com/olucasdomkt/ferramentas-claude-code), que guarda no Keychain do macOS. Serve qualquer comando que faça três coisas: `get NOME` imprime o valor e sai 0 (sai diferente de 0 se não existir), `has NOME` sai 0 se existir, e `set NOME VALOR` grava. Se não for o `secret` no PATH, passe o caminho absoluto em `MCP_HUB_SECRET`.
+- Toda chamada precisa do token do hub (`Authorization: Bearer`, guardado no cofre como `MCP_HUB_TOKEN`). Sem o token a resposta é 401. Com `Origin` de um site externo, 403. Com um `Host` que não seja `127.0.0.1` ou `localhost`, 400, o que impede que um site use DNS rebinding para chegar ao servidor pelo navegador. Só a rota `/status` do mcp-proxy responde sem token, e ela devolve só se o servidor está ativo.
+- O token protege contra outra conta da máquina e contra sites abertos no navegador. Não protege contra programa rodando como você: ele lê o token no `~/.claude.json` ou no cofre.
 - Se o servidor filho morrer, o proxy sai e o launchd sobe de novo.
 - Os servidores node ficam com versão fixa (`node/package.json`), em vez de um `npx ...@latest` que puxa qualquer versão nova publicada em toda sessão.
 
@@ -52,10 +55,12 @@ npm install --prefix ~/.claude/mcp-hub/node
 ./status.sh               # serviços, teste real, memória e cópias antigas
 ```
 
-O nome de cada servidor no `servers.json` tem que ser igual ao do `~/.claude.json`. O que o `--aplicar` faz:
+O nome de cada servidor no `servers.json` tem que ser igual ao do `~/.claude.json`. Cada servidor do exemplo tem o seu pré-requisito, igual ao de quando ele roda sem o hub. O `workspace-mcp` vem do `uv tool install workspace-mcp`. O Gmail precisa do login OAuth feito antes, pelo próprio pacote. No `teste` do google-workspace, troque `voce@exemplo.com` pelo seu e-mail; sem a troca, o teste reprova e o servidor fica fora do hub.
+
+O que o `--aplicar` faz:
 
 1. Copia `bin/` e `servers.json` para `~/.claude/mcp-hub/`.
-2. Guarda em `~/.claude/mcp-hub/backups/` a configuração original de cada servidor (permissão 600).
+2. Guarda em `~/.claude/mcp-hub/backups/` a configuração original de cada servidor e uma cópia inteira do `~/.claude.json` (permissão 600). As duas têm os seus tokens em texto, e a cada `--aplicar` entra uma cópia nova.
 3. Cria o `MCP_HUB_TOKEN` no cofre, se ainda não existir.
 4. Cria um LaunchAgent por servidor (`local.mcp-hub.<nome>`), que sobe no login e volta se cair.
 5. Testa cada um como o Claude Code faz (`initialize` e `tools/list`) e, se o servidor tiver `teste` no `servers.json`, faz uma chamada real só de leitura para provar a credencial.
@@ -76,7 +81,7 @@ Variáveis: `MCP_HUB_DIR` (padrão `~/.claude/mcp-hub`), `MCP_HUB_PY` (o python 
 
 - Se o hub ficar fora do ar por mais de uns 4 minutos, a sessão aberta desiste de reconectar e as ferramentas daquele servidor somem até você rodar `/mcp`. Queda curta reconecta sozinha.
 - Os serviços usam o node do terminal que rodou o instalador. Trocou a versão no nvm? Rode `./instalar.sh --aplicar` de novo.
-- O token do hub fica no header da entrada do `~/.claude.json`, que o instalador deixa com permissão 600. Na troca do passo 6 ele passa como argumento do `claude mcp add-json` e aparece no `ps` por cerca de um segundo.
+- O token do hub fica no header da entrada do `~/.claude.json`, que o instalador deixa com permissão 600. Ele aparece no `ps` duas vezes: por milissegundos quando é criado (passo 3) e por cerca de um segundo na troca do passo 6, quando passa como argumento do `claude mcp add-json`.
 - Feito para Mac de um usuário só. Porta acima de 1024 qualquer conta da máquina consegue abrir: se o hub estiver parado e outra conta ocupar a porta, as sessões do Claude Code mandam a ela o token e as chamadas. O `hub-teste.py` confere o dono da porta antes de mandar o token, mas o Claude Code não faz essa conferência.
 - O filtro de Host e o token entram trocando uma classe interna do `mcp-proxy`. Foi testado com a versão 0.13.0; uma versão nova pode mudar esse ponto, por isso a instalação fixa a versão.
 

@@ -36,7 +36,11 @@ def troca(s):
 
 
 def do_cofre(nome):
-    r = subprocess.run([SECRET, "get", nome], capture_output=True, text=True)
+    try:
+        r = subprocess.run([SECRET, "get", nome], capture_output=True, text=True)
+    except FileNotFoundError:
+        log(f"comando do cofre não encontrado: {SECRET} (ajuste MCP_HUB_SECRET)")
+        return ""
     return r.stdout.strip() if r.returncode == 0 else ""
 
 

@@ -20,9 +20,12 @@ from mcp.client.streamable_http import streamablehttp_client
 
 AQUI = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET = os.environ.get("MCP_HUB_SECRET") or shutil.which("secret") or "secret"
-TOKEN = os.environ.get("MCP_HUB_TOKEN") or subprocess.run(
-    [SECRET, "get", "MCP_HUB_TOKEN"], capture_output=True, text=True
-).stdout.strip()
+TOKEN = os.environ.get("MCP_HUB_TOKEN")
+if not TOKEN:
+    try:
+        TOKEN = subprocess.run([SECRET, "get", "MCP_HUB_TOKEN"], capture_output=True, text=True).stdout.strip()
+    except FileNotFoundError:
+        sys.exit(f"comando do cofre não encontrado: {SECRET} (ajuste MCP_HUB_SECRET ou passe MCP_HUB_TOKEN)")
 
 
 def porta_e_minha(porta):
