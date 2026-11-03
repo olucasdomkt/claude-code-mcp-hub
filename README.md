@@ -77,6 +77,7 @@ Variáveis: `MCP_HUB_DIR` (padrão `~/.claude/mcp-hub`), `MCP_HUB_PY` (o python 
 - Se o hub ficar fora do ar por mais de uns 4 minutos, a sessão aberta desiste de reconectar e as ferramentas daquele servidor somem até você rodar `/mcp`. Queda curta reconecta sozinha.
 - Os serviços usam o node do terminal que rodou o instalador. Trocou a versão no nvm? Rode `./instalar.sh --aplicar` de novo.
 - O token do hub fica no header da entrada do `~/.claude.json`, que o instalador deixa com permissão 600. Na troca do passo 6 ele passa como argumento do `claude mcp add-json` e aparece no `ps` por cerca de um segundo.
+- Feito para Mac de um usuário só. Porta acima de 1024 qualquer conta da máquina consegue abrir: se o hub estiver parado e outra conta ocupar a porta, as sessões do Claude Code mandam a ela o token e as chamadas. O `hub-teste.py` confere o dono da porta antes de mandar o token, mas o Claude Code não faz essa conferência.
 - O filtro de Host e o token entram trocando uma classe interna do `mcp-proxy`. Foi testado com a versão 0.13.0; uma versão nova pode mudar esse ponto, por isso a instalação fixa a versão.
 
 ## Licença

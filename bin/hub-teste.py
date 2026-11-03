@@ -25,6 +25,14 @@ TOKEN = os.environ.get("MCP_HUB_TOKEN") or subprocess.run(
 ).stdout.strip()
 
 
+def porta_e_minha(porta):
+    """Só manda o token se quem escuta na porta é processo do meu usuário.
+    Com o hub parado, outra conta da máquina pode ocupar a porta e receber o token."""
+    r = subprocess.run(["lsof", "-nP", f"-iTCP:{porta}", "-sTCP:LISTEN", "-Fu"], capture_output=True, text=True)
+    donos = {l[1:] for l in r.stdout.splitlines() if l.startswith("u")}
+    return donos == {str(os.getuid())}, donos
+
+
 def limpa(texto):
     """Corta e mascara sequências longas (cara de token), caso um erro da API ecoe a credencial."""
     return re.sub(r"[A-Za-z0-9_\-.+/=]{24,}", "[…]", texto)[:200]
@@ -33,8 +41,12 @@ def limpa(texto):
 async def testa(nome, cfg):
     t = time.time()
     teste = cfg.get("teste")
+    minha, donos = porta_e_minha(cfg["porta"])
+    if not minha:
+        motivo = "ninguém escutando" if not donos else f"porta de outro usuário (uid {', '.join(sorted(donos))}), token não enviado"
+        return False, motivo, time.time() - t
     try:
-        cab = {"Authorization": f"Bearer {TOKEN}"}
+        cab ={"Authorization": f"Bearer {TOKEN}"}
         async with streamablehttp_client(f"http://127.0.0.1:{cfg['porta']}/mcp", headers=cab) as (r, w, _):
             async with ClientSession(r, w) as s:
                 await asyncio.wait_for(s.initialize(), 60)
