@@ -1,0 +1,7 @@
+servers.json
+node/node_modules/
+node/package-lock.json
+logs/
+backups/
+*.log
+__pycache__/

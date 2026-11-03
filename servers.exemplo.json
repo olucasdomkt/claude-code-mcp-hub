@@ -1,0 +1,45 @@
+{
+  "_leia": "Copie para servers.json e deixe só os servidores que você usa. A chave é o nome exato do servidor no ~/.claude.json. 'escopo': user = global; local = o projeto da sua home. 'segredos' = VARIAVEL: NOME_NO_COFRE (lido do cofre na subida, nunca gravado em arquivo). {HUB} = pasta do hub (~/.claude/mcp-hub), {HOME} = sua home. 'teste' = UMA chamada real só-leitura e grátis que o hub-teste.py faz para provar a credencial ('espera' = regex que só aparece quando deu certo); sem 'teste', a saída diz 'sem chamada real'. 'processo' = trecho do comando que identifica no ps as cópias antigas (uma por sessão), usado pelo status.sh.",
+  "gmail": {
+    "porta": 5121, "escopo": "user",
+    "cmd": ["{HUB}/node/node_modules/.bin/gmail-mcp"],
+    "processo": "server-gmail-autoauth",
+    "teste": {"ferramenta": "list_email_labels", "args": {}, "espera": "System Labels:"}
+  },
+  "google-workspace": {
+    "porta": 5122, "escopo": "user",
+    "cmd": ["{HOME}/.local/bin/workspace-mcp", "--tools", "gmail", "drive", "sheets", "--single-user"],
+    "processo": "workspace-mcp",
+    "env": {"OAUTHLIB_INSECURE_TRANSPORT": "1"},
+    "segredos": {"GOOGLE_OAUTH_CLIENT_ID": "GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET": "GOOGLE_OAUTH_CLIENT_SECRET"},
+    "teste": {"ferramenta": "list_gmail_labels", "args": {"user_google_email": "voce@exemplo.com"}, "espera": "SYSTEM LABELS:"}
+  },
+  "supabase": {
+    "porta": 5123, "escopo": "user",
+    "cmd": ["{HUB}/node/node_modules/.bin/mcp-server-supabase", "--read-only"],
+    "processo": "mcp-server-supabase",
+    "segredos": {"SUPABASE_ACCESS_TOKEN": "SUPABASE_PAT"},
+    "teste": {"ferramenta": "list_organizations", "args": {}, "espera": "\"organizations\":"}
+  },
+  "asana": {
+    "porta": 5124, "escopo": "user",
+    "cmd": ["{HUB}/node/node_modules/.bin/mcp-server-asana"],
+    "processo": "mcp-server-asana",
+    "segredos": {"ASANA_ACCESS_TOKEN": "ASANA_PAT"},
+    "teste": {"ferramenta": "asana_list_workspaces", "args": {}, "espera": "\"resource_type\":\"workspace\""}
+  },
+  "discord": {
+    "porta": 5125, "escopo": "user",
+    "cmd": ["{HUB}/node/node_modules/.bin/mcp-discord"],
+    "processo": "mcp-discord",
+    "segredos": {"DISCORD_TOKEN": "DISCORD_BOT_TOKEN"},
+    "teste": {"ferramenta": "discord_login", "args": {}, "espera": "^(Already logged in as|Successfully logged in to Discord):"}
+  },
+  "dataforseo": {
+    "porta": 5126, "escopo": "user",
+    "cmd": ["{HUB}/node/node_modules/.bin/dataforseo-mcp-server"],
+    "processo": "dataforseo-mcp-server",
+    "segredos": {"DATAFORSEO_USERNAME": "DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD": "DATAFORSEO_PASSWORD"},
+    "teste": {"ferramenta": "api_request", "args": {"method": "GET", "path": "/v3/appendix/user_data"}, "espera": "\"status_code\": 20000"}
+  }
+}
